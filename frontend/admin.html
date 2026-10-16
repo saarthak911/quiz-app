@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gradebook &mdash; Admin</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="app-header">
+    <div class="brand">grade<span>book</span></div>
+    <nav id="appNav"></nav>
+  </header>
+
+  <h1>Admin</h1>
+  <div id="alertBox"></div>
+
+  <!-- Create quiz -->
+  <div class="card">
+    <h2>Create a quiz</h2>
+    <form id="createQuizForm">
+      <label for="title">Title</label>
+      <input type="text" id="title" required>
+
+      <label for="description">Description</label>
+      <textarea id="description"></textarea>
+
+      <label for="duration">Duration (minutes)</label>
+      <input type="number" id="duration" min="1" value="10" required>
+
+      <button type="submit">Create quiz</button>
+    </form>
+  </div>
+
+  <!-- Add questions -->
+  <div class="card">
+    <h2>Add a question</h2>
+    <label for="quizSelect">Quiz</label>
+    <select id="quizSelect" style="width:100%; padding:10px; border:1px solid var(--paper-line); border-radius:2px; background:var(--paper);"></select>
+
+    <form id="addQuestionForm">
+      <label for="questionText">Question</label>
+      <textarea id="questionText" required></textarea>
+
+      <label for="optionA">Option A</label>
+      <input type="text" id="optionA" required>
+      <label for="optionB">Option B</label>
+      <input type="text" id="optionB" required>
+      <label for="optionC">Option C</label>
+      <input type="text" id="optionC" required>
+      <label for="optionD">Option D</label>
+      <input type="text" id="optionD" required>
+
+      <label for="correctOption">Correct option</label>
+      <select id="correctOption" style="width:100%; padding:10px; border:1px solid var(--paper-line); border-radius:2px; background:var(--paper);">
+        <option value="A">A</option>
+        <option value="B">B</option>
+        <option value="C">C</option>
+        <option value="D">D</option>
+      </select>
+
+      <button type="submit">Add question</button>
+    </form>
+  </div>
+
+  <!-- Results -->
+  <div class="card">
+    <h2>Results</h2>
+    <label for="resultsQuizSelect">Quiz</label>
+    <select id="resultsQuizSelect" style="width:100%; padding:10px; border:1px solid var(--paper-line); border-radius:2px; background:var(--paper);"></select>
+    <div id="resultsTable"></div>
+  </div>
+</div>
+
+<script src="js/api.js"></script>
+<script>
+  Auth.requireAdmin();
+  renderNav();
+
+  let quizzes = [];
+
+  async function loadQuizzes() {
+    quizzes = await apiCall('/quizzes');
+    const options = quizzes.map(q => `<option value="${q.id}">${escapeHtml(q.title)}</option>`).join('');
+    document.getElementById('quizSelect').innerHTML = options || '<option value="">No quizzes yet</option>';
+    document.getElementById('resultsQuizSelect').innerHTML = options || '<option value="">No quizzes yet</option>';
+    if (quizzes.length) loadResults();
+  }
+
+  document.getElementById('createQuizForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    clearAlert('alertBox');
+    try {
+      await apiCall('/admin/quizzes', {
+        method: 'POST',
+        body: {
+          title: document.getElementById('title').value.trim(),
+          description: document.getElementById('description').value.trim(),
+          durationMinutes: parseInt(document.getElementById('duration').value, 10)
+        }
+      });
+      document.getElementById('createQuizForm').reset();
+      document.getElementById('duration').value = 10;
+      showAlert('alertBox', 'Quiz created.', 'success');
+      await loadQuizzes();
+    } catch (err) {
+      showAlert('alertBox', err.message);
+    }
+  });
+
+  document.getElementById('addQuestionForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    clearAlert('alertBox');
+    const quizId = document.getElementById('quizSelect').value;
+    if (!quizId) {
+      showAlert('alertBox', 'Create a quiz first.');
+      return;
+    }
+    try {
+      await apiCall(`/admin/quizzes/${quizId}/questions`, {
+        method: 'POST',
+        body: {
+          questionText: document.getElementById('questionText').value.trim(),
+          optionA: document.getElementById('optionA').value.trim(),
+          optionB: document.getElementById('optionB').value.trim(),
+          optionC: document.getElementById('optionC').value.trim(),
+          optionD: document.getElementById('optionD').value.trim(),
+          correctOption: document.getElementById('correctOption').value
+        }
+      });
+      document.getElementById('addQuestionForm').reset();
+      showAlert('alertBox', 'Question added.', 'success');
+      await loadQuizzes();
+    } catch (err) {
+      showAlert('alertBox', err.message);
+    }
+  });
+
+  document.getElementById('resultsQuizSelect').addEventListener('change', loadResults);
+
+  async function loadResults() {
+    const quizId = document.getElementById('resultsQuizSelect').value;
+    const tableEl = document.getElementById('resultsTable');
+    if (!quizId) { tableEl.innerHTML = ''; return; }
+    try {
+      const results = await apiCall(`/admin/quizzes/${quizId}/results`);
+      if (!results.length) {
+        tableEl.innerHTML = '<p class="muted">No attempts yet.</p>';
+        return;
+      }
+      tableEl.innerHTML = `
+        <table>
+          <thead><tr><th>Student</th><th>Score</th><th>Started</th><th>Submitted</th></tr></thead>
+          <tbody>
+            ${results.map(r => `
+              <tr>
+                <td>${escapeHtml(r.username)}</td>
+                <td>${r.submittedAt ? r.score : '&mdash; (in progress)'}</td>
+                <td>${new Date(r.startedAt).toLocaleString()}</td>
+                <td>${r.submittedAt ? new Date(r.submittedAt).toLocaleString() : '&mdash;'}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+    } catch (err) {
+      showAlert('alertBox', err.message);
+    }
+  }
+
+  loadQuizzes();
+</script>
+</body>
+</html>

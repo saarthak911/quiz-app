@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gradebook &mdash; Sign in</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="wrap" style="max-width: 420px;">
+  <header class="app-header" style="border-bottom: none; margin-bottom: 20px;">
+    <div class="brand">grade<span>book</span></div>
+  </header>
+
+  <div class="card">
+    <h1 id="formTitle">Sign in</h1>
+    <p class="muted">Take quizzes and see your scored results.</p>
+
+    <div id="alertBox"></div>
+
+    <form id="authForm">
+      <div id="usernameOrEmailFields">
+        <label for="username">Username</label>
+        <input type="text" id="username" required autocomplete="username">
+      </div>
+
+      <div id="emailField" style="display:none;">
+        <label for="email">Email</label>
+        <input type="email" id="email" autocomplete="email">
+      </div>
+
+      <label for="password">Password</label>
+      <input type="password" id="password" required autocomplete="current-password">
+
+      <button type="submit" id="submitBtn">Sign in</button>
+    </form>
+
+    <p class="muted" style="margin-top: 18px;">
+      <span id="toggleText">Don't have an account?</span>
+      <button class="linklike" id="toggleModeBtn" style="border:none;background:none;color:var(--red-pencil);cursor:pointer;font-size:14px;">Create one</button>
+    </p>
+  </div>
+</div>
+
+<script src="js/api.js"></script>
+<script>
+  let mode = 'login'; // 'login' | 'register'
+
+  const form = document.getElementById('authForm');
+  const emailField = document.getElementById('emailField');
+  const formTitle = document.getElementById('formTitle');
+  const submitBtn = document.getElementById('submitBtn');
+  const toggleText = document.getElementById('toggleText');
+  const toggleModeBtn = document.getElementById('toggleModeBtn');
+
+  toggleModeBtn.addEventListener('click', () => {
+    mode = mode === 'login' ? 'register' : 'login';
+    const isRegister = mode === 'register';
+    emailField.style.display = isRegister ? 'block' : 'none';
+    document.getElementById('email').required = isRegister;
+    formTitle.textContent = isRegister ? 'Create an account' : 'Sign in';
+    submitBtn.textContent = isRegister ? 'Create account' : 'Sign in';
+    toggleText.textContent = isRegister ? 'Already have an account?' : "Don't have an account?";
+    toggleModeBtn.textContent = isRegister ? 'Sign in' : 'Create one';
+    clearAlert('alertBox');
+  });
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    clearAlert('alertBox');
+    submitBtn.disabled = true;
+
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value;
+
+    try {
+      let result;
+      if (mode === 'login') {
+        result = await apiCall('/auth/login', { method: 'POST', auth: false, body: { username, password } });
+      } else {
+        const email = document.getElementById('email').value.trim();
+        result = await apiCall('/auth/register', { method: 'POST', auth: false, body: { username, email, password } });
+      }
+      Auth.save(result);
+      window.location.href = 'dashboard.html';
+    } catch (err) {
+      showAlert('alertBox', err.message);
+    } finally {
+      submitBtn.disabled = false;
+    }
+  });
+
+  // Already logged in? Skip straight to the dashboard.
+  if (Auth.isLoggedIn()) {
+    window.location.href = 'dashboard.html';
+  }
+</script>
+</body>
+</html>

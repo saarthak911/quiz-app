@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gradebook &mdash; Quizzes</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="app-header">
+    <div class="brand">grade<span>book</span></div>
+    <nav id="appNav"></nav>
+  </header>
+
+  <h1>Available quizzes</h1>
+  <p class="muted">Pick one to start. Once you begin, the clock doesn't stop.</p>
+
+  <div id="alertBox"></div>
+  <div id="quizList" class="card"></div>
+</div>
+
+<script src="js/api.js"></script>
+<script>
+  Auth.requireLogin();
+  renderNav();
+
+  async function loadQuizzes() {
+    const listEl = document.getElementById('quizList');
+    try {
+      const quizzes = await apiCall('/quizzes');
+      if (!quizzes.length) {
+        listEl.innerHTML = '<div class="empty-state">No quizzes yet. Check back soon.</div>';
+        return;
+      }
+      listEl.innerHTML = quizzes.map(q => `
+        <div class="quiz-item">
+          <div>
+            <h3 style="margin-bottom:4px;">${escapeHtml(q.title)}</h3>
+            <p class="muted" style="margin:0 0 4px;">${escapeHtml(q.description || '')}</p>
+            <div class="meta">${q.questionCount} questions &middot; ${q.durationMinutes} min</div>
+          </div>
+          <button onclick="startQuiz(${q.id})" ${q.questionCount === 0 ? 'disabled' : ''}>
+            ${q.questionCount === 0 ? 'No questions yet' : 'Start'}
+          </button>
+        </div>
+      `).join('');
+    } catch (err) {
+      showAlert('alertBox', err.message);
+    }
+  }
+
+  async function startQuiz(quizId) {
+    try {
+      const attempt = await apiCall(`/quizzes/${quizId}/start`, { method: 'POST' });
+      sessionStorage.setItem('current_attempt', JSON.stringify(attempt));
+      window.location.href = 'quiz.html';
+    } catch (err) {
+      showAlert('alertBox', err.message);
+    }
+  }
+
+  loadQuizzes();
+</script>
+</body>
+</html>

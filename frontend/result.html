@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gradebook &mdash; Result</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="app-header">
+    <div class="brand">grade<span>book</span></div>
+    <nav id="appNav"></nav>
+  </header>
+
+  <div class="card score-banner" id="scoreBanner"></div>
+
+  <h2>Answer review</h2>
+  <div id="reviewList" class="card"></div>
+
+  <a href="dashboard.html" class="btn">Back to quizzes</a>
+</div>
+
+<script src="js/api.js"></script>
+<script>
+  Auth.requireLogin();
+  renderNav();
+
+  const result = JSON.parse(sessionStorage.getItem('last_result') || 'null');
+
+  if (!result) {
+    window.location.href = 'dashboard.html';
+  }
+
+  document.getElementById('scoreBanner').innerHTML = `
+    <div class="big-score">${result.score} / ${result.totalQuestions}</div>
+    <div class="of">${Math.round((result.score / result.totalQuestions) * 100)}% correct</div>
+  `;
+
+  document.getElementById('reviewList').innerHTML = result.review.map((r, idx) => `
+    <div class="question-block">
+      <div class="question-number">Question ${idx + 1}</div>
+      <h3>${escapeHtml(r.questionText)}</h3>
+      <p style="margin: 6px 0;">
+        Your answer:
+        <strong style="color: ${r.correct ? 'var(--green-check)' : 'var(--red-pencil)'};">
+          ${r.selectedOption || '(left blank)'}
+        </strong>
+        ${r.correct ? '&check; correct' : `&mdash; correct answer was <strong>${r.correctOption}</strong>`}
+      </p>
+    </div>
+  `).join('');
+</script>
+</body>
+</html>

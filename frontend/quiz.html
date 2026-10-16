@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gradebook &mdash; Quiz in progress</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="app-header">
+    <div class="brand">grade<span>book</span></div>
+    <div id="timerDisplay" class="timer-stamp">--:--</div>
+  </header>
+
+  <div id="alertBox"></div>
+
+  <form id="quizForm" class="card">
+    <div id="questionsContainer"></div>
+    <button type="submit" id="submitBtn">Submit quiz</button>
+  </form>
+</div>
+
+<script src="js/api.js"></script>
+<script>
+  Auth.requireLogin();
+
+  const attemptData = JSON.parse(sessionStorage.getItem('current_attempt') || 'null');
+  if (!attemptData) {
+    window.location.href = 'dashboard.html';
+  }
+
+  const questionsContainer = document.getElementById('questionsContainer');
+  const timerDisplay = document.getElementById('timerDisplay');
+  const quizForm = document.getElementById('quizForm');
+  const submitBtn = document.getElementById('submitBtn');
+
+  let timerInterval = null;
+  let submitted = false;
+
+  function renderQuestions(questions) {
+    questionsContainer.innerHTML = questions.map((q, idx) => `
+      <div class="question-block">
+        <div class="question-number">Question ${idx + 1} of ${questions.length}</div>
+        <h3>${escapeHtml(q.questionText)}</h3>
+        <div class="options-list">
+          ${['A', 'B', 'C', 'D'].map(letter => {
+            const optionText = q['option' + letter];
+            return `
+              <label class="option-row">
+                <input type="radio" name="q_${q.id}" value="${letter}">
+                <span>${letter}. ${escapeHtml(optionText)}</span>
+              </label>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function collectAnswers(questions) {
+    return questions.map(q => {
+      const selected = quizForm.querySelector(`input[name="q_${q.id}"]:checked`);
+      return { questionId: q.id, selectedOption: selected ? selected.value : null };
+    });
+  }
+
+  // Client-side timer drives the UI and triggers auto-submit, but the server
+  // independently checks elapsed wall-clock time against the quiz duration
+  // when the attempt is submitted -- so tampering with this countdown in
+  // devtools doesn't actually buy extra time.
+  function startTimer(durationMinutes, startedAt) {
+    const startMs = new Date(startedAt).getTime();
+    const endMs = startMs + durationMinutes * 60 * 1000;
+
+    function tick() {
+      const remainingMs = endMs - Date.now();
+      if (remainingMs <= 0) {
+        timerDisplay.textContent = '00:00';
+        clearInterval(timerInterval);
+        submitQuiz(true);
+        return;
+      }
+      const totalSeconds = Math.floor(remainingMs / 1000);
+      const mins = Math.floor(totalSeconds / 60);
+      const secs = totalSeconds % 60;
+      timerDisplay.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+      if (totalSeconds <= 30) {
+        timerDisplay.classList.add('warning');
+      }
+    }
+
+    tick();
+    timerInterval = setInterval(tick, 1000);
+  }
+
+  async function submitQuiz(auto = false) {
+    if (submitted) return;
+    submitted = true;
+    clearInterval(timerInterval);
+    submitBtn.disabled = true;
+    submitBtn.textContent = auto ? 'Time up — submitting...' : 'Submitting...';
+
+    const answers = collectAnswers(attemptData.questions);
+
+    try {
+      const result = await apiCall(`/attempts/${attemptData.attemptId}/submit`, {
+        method: 'POST',
+        body: { answers }
+      });
+      sessionStorage.setItem('last_result', JSON.stringify(result));
+      sessionStorage.removeItem('current_attempt');
+      window.location.href = 'result.html';
+    } catch (err) {
+      submitted = false;
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Submit quiz';
+      showAlert('alertBox', err.message);
+    }
+  }
+
+  quizForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    submitQuiz(false);
+  });
+
+  renderQuestions(attemptData.questions);
+  startTimer(attemptData.durationMinutes, attemptData.startedAt);
+</script>
+</body>
+</html>
