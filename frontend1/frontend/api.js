@@ -1,6 +1,6 @@
 // Shared helpers used by every page. Plain JS, no build step, no framework.
 
-const API_BASE = 'http://localhost:8080/api';
+const API_BASE = 'http://localhost:8081/api';
 
 const Auth = {
   getToken() { return localStorage.getItem('quizapp_token'); },

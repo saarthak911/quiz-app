@@ -45,7 +45,7 @@ cd backend
 mvn spring-boot:run
 ```
 
-The API starts on `http://localhost:8080`.
+The API starts on `http://localhost:8081`.
 
 ## 3. Run the frontend
 
@@ -68,7 +68,7 @@ so nobody can self-promote to admin through the API). To get an admin login:
 1. Register normally through the frontend.
 2. Promote that user directly in the database:
    ```sql
-   UPDATE users SET role = 'ADMIN' WHERE username = 'your_username';
+   UPDATE users SET role = 'ADMIN' WHERE username = 'saarthak';
    ```
 3. Log out and log back in (so a fresh JWT is issued with the `ADMIN` role).
 4. You'll now see an **Admin** link in the nav — create quizzes and add
