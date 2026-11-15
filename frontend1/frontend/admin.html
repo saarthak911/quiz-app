@@ -64,6 +64,34 @@
     </form>
   </div>
 
+  <!-- Suggested videos -->
+  <div class="card">
+    <h2>Suggested videos</h2>
+    <p class="muted">YouTube links shown on the result page to students who score below the threshold.</p>
+
+    <label for="resQuizSelect">Quiz</label>
+    <select id="resQuizSelect" style="width:100%; padding:10px; border:1px solid var(--paper-line); border-radius:2px; background:var(--paper);"></select>
+
+    <div class="inline-row">
+      <div>
+        <label for="thresholdInput">Show videos when score is below (%)</label>
+        <input type="number" id="thresholdInput" min="0" max="100" value="50">
+      </div>
+      <button type="button" id="saveThresholdBtn" class="secondary">Save</button>
+    </div>
+    <p class="muted" style="margin-top:6px;">0 turns suggestions off. 100 shows them to everyone who doesn't get full marks.</p>
+
+    <form id="addResourceForm">
+      <label for="resTitle">Video title</label>
+      <input type="text" id="resTitle" maxlength="150" required>
+      <label for="resUrl">YouTube link</label>
+      <input type="text" id="resUrl" placeholder="https://www.youtube.com/watch?v=..." required>
+      <button type="submit">Add video</button>
+    </form>
+
+    <div id="resourceList" style="margin-top:18px;"></div>
+  </div>
+
   <!-- Results -->
   <div class="card">
     <h2>Results</h2>
@@ -85,7 +113,8 @@
     const options = quizzes.map(q => `<option value="${q.id}">${escapeHtml(q.title)}</option>`).join('');
     document.getElementById('quizSelect').innerHTML = options || '<option value="">No quizzes yet</option>';
     document.getElementById('resultsQuizSelect').innerHTML = options || '<option value="">No quizzes yet</option>';
-    if (quizzes.length) loadResults();
+    document.getElementById('resQuizSelect').innerHTML = options || '<option value="">No quizzes yet</option>';
+    if (quizzes.length) { loadResults(); loadResources(); }
   }
 
   document.getElementById('createQuizForm').addEventListener('submit', async (e) => {
@@ -168,6 +197,94 @@
       showAlert('alertBox', err.message);
     }
   }
+
+  // ---------- Suggested videos ----------
+  document.getElementById('resQuizSelect').addEventListener('change', loadResources);
+
+  async function loadResources() {
+    const quizId = document.getElementById('resQuizSelect').value;
+    const listEl = document.getElementById('resourceList');
+    listEl.innerHTML = '';
+    if (!quizId) return;
+    try {
+      const data = await apiCall(`/admin/quizzes/${quizId}/resources`);
+      document.getElementById('thresholdInput').value = data.thresholdPercent;
+      if (!data.resources.length) {
+        listEl.innerHTML = '<p class="muted">No videos added for this quiz yet.</p>';
+        return;
+      }
+      data.resources.forEach(r => {
+        const row = document.createElement('div');
+        row.className = 'resource-row';
+
+        const link = document.createElement('a');
+        link.href = r.url;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.textContent = r.title;
+
+        const del = document.createElement('button');
+        del.type = 'button';
+        del.className = 'secondary';
+        del.textContent = 'Delete';
+        del.addEventListener('click', () => deleteResource(quizId, r.id));
+
+        row.appendChild(link);
+        row.appendChild(del);
+        listEl.appendChild(row);
+      });
+    } catch (err) {
+      showAlert('alertBox', err.message);
+    }
+  }
+
+  document.getElementById('addResourceForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    clearAlert('alertBox');
+    const quizId = document.getElementById('resQuizSelect').value;
+    if (!quizId) { showAlert('alertBox', 'Create a quiz first.'); return; }
+    try {
+      await apiCall(`/admin/quizzes/${quizId}/resources`, {
+        method: 'POST',
+        body: {
+          title: document.getElementById('resTitle').value.trim(),
+          url: document.getElementById('resUrl').value.trim()
+        }
+      });
+      document.getElementById('addResourceForm').reset();
+      showAlert('alertBox', 'Video added.', 'success');
+      loadResources();
+    } catch (err) {
+      showAlert('alertBox', err.message);
+    }
+  });
+
+  async function deleteResource(quizId, resourceId) {
+    clearAlert('alertBox');
+    try {
+      await apiCall(`/admin/quizzes/${quizId}/resources/${resourceId}`, { method: 'DELETE' });
+      loadResources();
+    } catch (err) {
+      showAlert('alertBox', err.message);
+    }
+  }
+
+  document.getElementById('saveThresholdBtn').addEventListener('click', async () => {
+    clearAlert('alertBox');
+    const quizId = document.getElementById('resQuizSelect').value;
+    if (!quizId) return;
+    const percent = parseInt(document.getElementById('thresholdInput').value, 10);
+    if (isNaN(percent) || percent < 0 || percent > 100) {
+      showAlert('alertBox', 'Threshold must be between 0 and 100.');
+      return;
+    }
+    try {
+      await apiCall(`/admin/quizzes/${quizId}/suggestion-threshold`, { method: 'PUT', body: { percent } });
+      showAlert('alertBox', 'Threshold saved.', 'success');
+    } catch (err) {
+      showAlert('alertBox', err.message);
+    }
+  });
 
   loadQuizzes();
 </script>

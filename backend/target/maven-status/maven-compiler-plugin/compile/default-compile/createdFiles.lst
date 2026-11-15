@@ -4,8 +4,12 @@ com\quizapp\service\QuizService.class
 com\quizapp\repository\QuestionRepository.class
 com\quizapp\QuizAppApplication.class
 com\quizapp\repository\UserRepository.class
+com\quizapp\dto\ResourceListDTO.class
 com\quizapp\entity\Attempt.class
+com\quizapp\dto\ResourceDTO.class
+com\quizapp\entity\QuizResource.class
 com\quizapp\dto\AuthResponse.class
+com\quizapp\dto\UpdateThresholdRequest.class
 com\quizapp\controller\QuizController.class
 com\quizapp\entity\User$Role.class
 com\quizapp\security\JwtAuthFilter.class
@@ -18,6 +22,7 @@ com\quizapp\entity\Question.class
 com\quizapp\entity\Quiz.class
 com\quizapp\security\AppUserDetails.class
 com\quizapp\repository\AnswerRepository.class
+com\quizapp\repository\QuizResourceRepository.class
 com\quizapp\controller\AdminController.class
 com\quizapp\repository\QuizRepository.class
 com\quizapp\dto\SubmitAttemptRequest.class
@@ -30,6 +35,7 @@ com\quizapp\config\SecurityConfig.class
 com\quizapp\dto\AnswerReviewDTO.class
 com\quizapp\dto\AttemptSummaryDTO.class
 com\quizapp\service\AuthService.class
+com\quizapp\dto\CreateResourceRequest.class
 com\quizapp\entity\User.class
 com\quizapp\security\AppUserDetailsService.class
 com\quizapp\dto\QuizSummaryDTO.class

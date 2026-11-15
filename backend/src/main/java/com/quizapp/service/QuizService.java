@@ -22,6 +22,7 @@ public class QuizService {
     @Autowired private AttemptRepository attemptRepository;
     @Autowired private AnswerRepository answerRepository;
     @Autowired private UserRepository userRepository;
+    @Autowired private QuizResourceRepository quizResourceRepository;
 
     // --- Student-facing ---
 
@@ -97,7 +98,7 @@ public class QuizService {
         attempt.setSubmittedAt(LocalDateTime.now());
         attemptRepository.save(attempt);
 
-        return new ResultDTO(attempt.getId(), score, attempt.getQuiz().getQuestions().size(), review);
+        return buildResult(attempt.getId(), attempt.getQuiz(), score, review);
     }
 
     public ResultDTO getResult(Long attemptId, String username) {
@@ -117,7 +118,22 @@ public class QuizService {
                         a.getSelectedOption(), a.getQuestion().getCorrectOption(), a.isCorrect()))
                 .toList();
 
-        return new ResultDTO(attempt.getId(), attempt.getScore(), attempt.getQuiz().getQuestions().size(), review);
+        return buildResult(attempt.getId(), attempt.getQuiz(), attempt.getScore(), review);
+    }
+
+    // Builds the result and decides, server-side, whether this student gets the
+    // suggested videos: only when their percentage is below the quiz's threshold.
+    private ResultDTO buildResult(Long attemptId, Quiz quiz, int score, List<AnswerReviewDTO> review) {
+        int total = quiz.getQuestions().size();
+        int threshold = quiz.getSuggestionThresholdPercent();
+
+        List<ResourceDTO> suggestions = List.of();
+        if (total > 0 && (score * 100.0 / total) < threshold) {
+            suggestions = quizResourceRepository.findByQuizIdOrderByIdAsc(quiz.getId()).stream()
+                    .map(r -> new ResourceDTO(r.getId(), r.getTitle(), r.getUrl()))
+                    .toList();
+        }
+        return new ResultDTO(attemptId, score, total, review, threshold, suggestions);
     }
 
     // --- Admin-facing ---
@@ -152,6 +168,42 @@ public class QuizService {
         question.setCorrectOption(request.getCorrectOption().toUpperCase());
 
         questionRepository.save(question);
+    }
+
+    public ResourceListDTO listResources(Long quizId) {
+        Quiz quiz = quizRepository.findById(quizId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Quiz not found"));
+        List<ResourceDTO> resources = quizResourceRepository.findByQuizIdOrderByIdAsc(quizId).stream()
+                .map(r -> new ResourceDTO(r.getId(), r.getTitle(), r.getUrl()))
+                .toList();
+        return new ResourceListDTO(quiz.getSuggestionThresholdPercent(), resources);
+    }
+
+    @Transactional
+    public ResourceDTO addResource(Long quizId, CreateResourceRequest request) {
+        Quiz quiz = quizRepository.findById(quizId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Quiz not found"));
+        QuizResource saved = quizResourceRepository.save(
+                new QuizResource(quiz, request.getTitle().trim(), request.getUrl().trim()));
+        return new ResourceDTO(saved.getId(), saved.getTitle(), saved.getUrl());
+    }
+
+    @Transactional
+    public void deleteResource(Long quizId, Long resourceId) {
+        QuizResource resource = quizResourceRepository.findById(resourceId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Resource not found"));
+        if (!resource.getQuiz().getId().equals(quizId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Resource not found for this quiz");
+        }
+        quizResourceRepository.delete(resource);
+    }
+
+    @Transactional
+    public void updateSuggestionThreshold(Long quizId, int percent) {
+        Quiz quiz = quizRepository.findById(quizId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Quiz not found"));
+        quiz.setSuggestionThresholdPercent(percent);
+        quizRepository.save(quiz);
     }
 
     public List<AttemptSummaryDTO> allResultsForQuiz(Long quizId) {

@@ -27,6 +27,10 @@ public class Quiz {
 
     private LocalDateTime createdAt = LocalDateTime.now();
 
+    // Students scoring below this percentage see the admin's suggested videos.
+    // Nullable on purpose so existing rows survive ddl-auto=update; null is read as 50.
+    private Integer suggestionThresholdPercent = 50;
+
     @OneToMany(mappedBy = "quiz", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Question> questions = new ArrayList<>();
 
@@ -49,6 +53,11 @@ public class Quiz {
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+
+    public Integer getSuggestionThresholdPercent() {
+        return suggestionThresholdPercent == null ? 50 : suggestionThresholdPercent;
+    }
+    public void setSuggestionThresholdPercent(Integer v) { this.suggestionThresholdPercent = v; }
 
     public List<Question> getQuestions() { return questions; }
     public void setQuestions(List<Question> questions) { this.questions = questions; }

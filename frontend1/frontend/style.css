@@ -319,3 +319,84 @@ th {
   padding: 40px 20px;
   color: var(--ink-soft);
 }
+
+/* ---------------------------------------------------------------------
+   Suggestion box — a sticky-note on the result page, shown only to
+   students who scored below the quiz's threshold.
+--------------------------------------------------------------------- */
+.suggestion-box {
+  background: #fff4b8;
+  border: 1px solid #e6d27a;
+  border-left: 6px solid var(--red-pencil);
+  border-radius: 3px;
+  box-shadow: 0 2px 6px var(--shadow);
+  padding: 20px 24px;
+  margin-bottom: 20px;
+}
+
+.suggestion-box h2 { margin-bottom: 6px; }
+
+.suggestion-box p { margin: 0 0 12px; }
+
+.suggestion-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.suggestion-list li {
+  border-top: 1px dashed #d8c466;
+}
+
+.suggestion-list a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 2px;
+  text-decoration: none;
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.suggestion-list a:hover { color: var(--red-pencil); }
+
+.suggestion-list .play {
+  flex: none;
+  width: 26px;
+  height: 20px;
+  border-radius: 5px;
+  background: var(--red-pencil);
+  color: #fff;
+  font-size: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Admin: resource rows */
+.resource-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px dashed var(--paper-line);
+  font-size: 14px;
+}
+
+.resource-row a { word-break: break-all; }
+
+.resource-row button {
+  margin-top: 0;
+  padding: 6px 12px;
+  flex: none;
+}
+
+.inline-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.inline-row > div { flex: 1; }
+.inline-row button { margin-top: 0; }

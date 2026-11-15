@@ -15,6 +15,8 @@
 
   <div class="card score-banner" id="scoreBanner"></div>
 
+  <div id="suggestionBox"></div>
+
   <h2>Answer review</h2>
   <div id="reviewList" class="card"></div>
 
@@ -36,6 +38,49 @@
     <div class="big-score">${result.score} / ${result.totalQuestions}</div>
     <div class="of">${Math.round((result.score / result.totalQuestions) * 100)}% correct</div>
   `;
+
+  // Suggested videos: the server only includes them when this student's score is
+  // below the quiz's threshold, so an empty list simply means "nothing to show".
+  // Links are built with DOM APIs (not innerHTML) so titles/URLs can never inject markup.
+  (function renderSuggestions() {
+    const box = document.getElementById('suggestionBox');
+    const items = result.suggestions || [];
+    if (!items.length) return;
+
+    const wrap = document.createElement('div');
+    wrap.className = 'suggestion-box';
+
+    const h = document.createElement('h2');
+    h.textContent = 'Suggested for you';
+    wrap.appendChild(h);
+
+    const intro = document.createElement('p');
+    intro.className = 'muted';
+    intro.textContent = `You scored below ${result.suggestionThresholdPercent}% on this quiz. ` +
+      'These videos from your instructor can help you revise before trying again:';
+    wrap.appendChild(intro);
+
+    const ul = document.createElement('ul');
+    ul.className = 'suggestion-list';
+    items.forEach(item => {
+      const li = document.createElement('li');
+      const a = document.createElement('a');
+      a.href = item.url;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      const play = document.createElement('span');
+      play.className = 'play';
+      play.textContent = '\u25B6';
+      const label = document.createElement('span');
+      label.textContent = item.title;
+      a.appendChild(play);
+      a.appendChild(label);
+      li.appendChild(a);
+      ul.appendChild(li);
+    });
+    wrap.appendChild(ul);
+    box.appendChild(wrap);
+  })();
 
   document.getElementById('reviewList').innerHTML = result.review.map((r, idx) => `
     <div class="question-block">
